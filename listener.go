@@ -7,6 +7,8 @@ import (
 	"math/rand"
 	"net"
 	"os"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/egor-erm/gognet/network"
@@ -26,8 +28,14 @@ type Listener struct {
 
 var listenerID = rand.Int31()
 
-func Listen(address *net.UDPAddr) (*Listener, error) {
-	list, err := net.ListenUDP("udp", address)
+func Listen(address string) (*Listener, error) {
+	ip := strings.Split(address, ":")[0]
+	port := strings.Split(address, ":")[1]
+	p, _ := strconv.Atoi(port)
+
+	la := &net.UDPAddr{IP: net.IP(ip), Port: p}
+
+	list, err := net.ListenUDP("udp", la)
 	if err != nil {
 		return nil, &net.OpError{Op: "listen", Net: "gognet", Source: nil, Addr: nil, Err: err}
 	}
