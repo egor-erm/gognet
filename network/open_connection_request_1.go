@@ -5,7 +5,7 @@ import (
 )
 
 type OpenConnectionRequest1 struct {
-	protocol byte
+	Protocol byte
 }
 
 func (pk *OpenConnectionRequest1) Write(buf *bytes.Buffer) {
@@ -13,7 +13,7 @@ func (pk *OpenConnectionRequest1) Write(buf *bytes.Buffer) {
 }
 
 func (pk *OpenConnectionRequest1) Read(buf *bytes.Buffer) error {
-	pk.protocol, _ = buf.ReadByte()
+	pk.Protocol, _ = buf.ReadByte()
 	_, err := buf.ReadByte()
 	return err
 }

@@ -15,8 +15,8 @@ import (
 type Listener struct {
 	listener *net.UDPConn
 
-	incoming chan *net.Conn
-	closed   chan *net.Conn
+	incoming chan *net.UDPConn
+	closed   chan *net.UDPConn
 
 	connections sync.Map
 
@@ -34,8 +34,8 @@ func Listen(address *net.UDPAddr) (*Listener, error) {
 	listener := &Listener{
 		listener: list,
 
-		incoming: make(chan *net.Conn),
-		closed:   make(chan *net.Conn),
+		incoming: make(chan *net.UDPConn),
+		closed:   make(chan *net.UDPConn),
 
 		log:        log.New(os.Stderr, "", log.LstdFlags),
 		listenerId: listenerID,
@@ -52,7 +52,6 @@ func (listener *Listener) listen() {
 		n, addr, err := listener.listener.ReadFromUDP(b)
 		if err != nil {
 			panic(err)
-			return
 		}
 		_, _ = buf.Write(b[:n])
 
@@ -63,11 +62,18 @@ func (listener *Listener) listen() {
 	}
 }
 
+func (listener *Listener) Accept() (*net.UDPConn, error) {
+	conn, ok := <-listener.incoming
+	if !ok {
+		return nil, &net.OpError{Op: "accept", Net: "raknet", Source: nil, Addr: nil, Err: fmt.Errorf("Conn closed")}
+	}
+	return conn, nil
+}
+
 func (listener *Listener) handle(b *bytes.Buffer, addr net.Addr) error {
 	_, found := listener.connections.Load(addr.String())
 	if !found {
-		// If there was no session yet, it means the packet is an offline message. It is not contained in a
-		// datagram.
+
 		packetID, err := b.ReadByte()
 		if err != nil {
 			return fmt.Errorf("error reading packet ID byte: %v", err)
@@ -78,7 +84,6 @@ func (listener *Listener) handle(b *bytes.Buffer, addr net.Addr) error {
 		default:
 			return fmt.Errorf("unknown packet received (%x): %x", packetID, b.Bytes())
 		}
-		return nil
 	}
 	return nil
 }
@@ -98,5 +103,9 @@ func (listener *Listener) handleOpenConnectionRequest1(b *bytes.Buffer, addr net
 
 	(&network.OpenConnectionReply1{ServerGUID: listener.listenerId}).Write(b)
 	_, err := listener.listener.WriteTo(b.Bytes(), addr)
+
+	listener.connections.Store(addr, listener.listener)
+
+	listener.incoming <- listener.listener
 	return err
 }

@@ -6,7 +6,7 @@ import (
 )
 
 type OpenConnectionReply1 struct {
-	ServerGUID int64
+	ServerGUID int32
 }
 
 func (pk *OpenConnectionReply1) Write(buf *bytes.Buffer) {

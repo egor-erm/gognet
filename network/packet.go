@@ -1,7 +1,5 @@
 package network
 
-import "bytes"
-
 const (
 	Protocol_Version byte = 0x01
 
@@ -10,8 +8,3 @@ const (
 	IDDisconnectNotification      byte = 0x03
 	IDIncompatibleProtocolVersion byte = 0x04
 )
-
-type Packet interface {
-	Read(*bytes.Buffer)
-	Write(*bytes.Buffer) error
-}
