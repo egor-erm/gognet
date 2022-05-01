@@ -48,5 +48,7 @@ func Dial(address string) (*net.UDPConn, error) {
 		fmt.Println("Протокол не тянет")
 	}
 
+	fmt.Println("d")
+
 	return nil, nil
 }
