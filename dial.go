@@ -3,13 +3,20 @@ package gognet
 import (
 	"bytes"
 	"fmt"
+	"math/rand"
 	"net"
+	"time"
 
 	"github.com/egor-erm/gognet/network"
 )
 
+func randPort() int {
+	rand.Seed(time.Now().Unix())
+	return rand.Intn(2000) + 30000
+}
+
 func Dial(address *net.UDPAddr) (*net.UDPConn, error) {
-	la := &net.UDPAddr{IP: []byte{0, 0, 0, 0}, Port: 54169}
+	la := &net.UDPAddr{IP: []byte{0, 0, 0, 0}, Port: randPort()}
 	ra := address
 
 	udpConn, err := net.DialUDP("udp", la, ra)

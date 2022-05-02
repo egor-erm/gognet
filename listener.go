@@ -80,7 +80,6 @@ func (listener *Listener) handle(b *bytes.Buffer, addr net.UDPAddr) error {
 		}
 		switch packetID {
 		case network.IDOpenConnectionRequest1:
-			fmt.Println("res open packet")
 			return listener.handleOpenConnectionRequest1(b, addr)
 		default:
 			return fmt.Errorf("unknown packet received (%x): %x", packetID, b.Bytes())
@@ -116,7 +115,7 @@ func (listener *Listener) handleOpenConnectionRequest1(b *bytes.Buffer, addr net
 	(&network.OpenConnectionReply1{ServerGUID: listener.listenerId}).Write(b)
 	_, err := listener.listener.WriteToUDP(b.Bytes(), &addr)
 
-	conn := &Conn{conn: listener.listener, addr: addr, packets: make(chan []byte)}
+	conn := &Conn{Connection: listener.listener, Addr: addr, packets: make(chan []byte)}
 
 	listener.connections.Store(addr.String(), conn)
 
