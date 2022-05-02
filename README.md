@@ -55,7 +55,7 @@ func main() {
 	defer conn.Close()
 
 	for {
-		_, _ = conn.Write([]byte{10, 2, 0}) // write []byte packet
+		_, _ = conn.Write([]byte{1, 2, 3, 4, 5}) // write []byte packet
 
 		b := make([]byte, 1024*1024*3)
 		n, _ := conn.Read(b) // read []byte packet
