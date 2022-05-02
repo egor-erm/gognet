@@ -55,19 +55,19 @@ func (listener *Listener) listen() {
 		}
 		_, _ = buf.Write(b[:n])
 
-		if err := listener.handle(buf, addr); err != nil {
+		if err := listener.handle(buf, *addr); err != nil {
 			listener.log.Printf("listener: error handling packet (addr = %v): %v\n", addr, err)
 		}
 		buf.Reset()
 	}
 }
 
-func (listener *Listener) Accept() (*net.UDPConn, error) {
+func (listener *Listener) Accept() (*Conn, error) {
 	conn, ok := <-listener.incoming
 	if !ok {
 		return nil, &net.OpError{Op: "accept", Net: "raknet", Source: nil, Addr: nil, Err: fmt.Errorf("Conn closed")}
 	}
-	return &conn.conn, nil
+	return conn, nil
 }
 
 func (listener *Listener) Close() error {
@@ -75,10 +75,9 @@ func (listener *Listener) Close() error {
 	return err
 }
 
-func (listener *Listener) handle(b *bytes.Buffer, addr net.Addr) error {
-	_, found := listener.connections.Load(addr.String())
+func (listener *Listener) handle(b *bytes.Buffer, addr net.UDPAddr) error {
+	value, found := listener.connections.Load(addr.String())
 	if !found {
-
 		packetID, err := b.ReadByte()
 		if err != nil {
 			return fmt.Errorf("error reading packet ID byte: %v", err)
@@ -90,10 +89,15 @@ func (listener *Listener) handle(b *bytes.Buffer, addr net.Addr) error {
 			return fmt.Errorf("unknown packet received (%x): %x", packetID, b.Bytes())
 		}
 	}
+
+	conn := value.(*Conn)
+
+	conn.packets <- b.Bytes()
+
 	return nil
 }
 
-func (listener *Listener) handleOpenConnectionRequest1(b *bytes.Buffer, addr net.Addr) error {
+func (listener *Listener) handleOpenConnectionRequest1(b *bytes.Buffer, addr net.UDPAddr) error {
 	packet := &network.OpenConnectionRequest1{}
 	if err := packet.Read(b); err != nil {
 		return fmt.Errorf("error reading open connection request 1: %v", err)
@@ -102,15 +106,17 @@ func (listener *Listener) handleOpenConnectionRequest1(b *bytes.Buffer, addr net
 
 	if packet.Protocol != network.Protocol_Version {
 		(&network.IncompatibleProtocolVersion{ServerGUID: listener.listenerId, ServerProtocol: network.Protocol_Version}).Write(b)
-		_, _ = listener.listener.WriteTo(b.Bytes(), addr)
+		_, _ = listener.listener.WriteToUDP(b.Bytes(), &addr)
 		return fmt.Errorf("error handling open connection request 1: incompatible protocol version %v (listener protocol = %v)", packet.Protocol, network.Protocol_Version)
 	}
 
 	(&network.OpenConnectionReply1{ServerGUID: listener.listenerId}).Write(b)
-	_, err := listener.listener.WriteTo(b.Bytes(), addr)
+	_, err := listener.listener.WriteToUDP(b.Bytes(), &addr)
 
-	listener.connections.Store(addr, listener.listener)
+	conn := &Conn{conn: *listener.listener, addr: addr, packets: make(chan []byte)}
 
-	listener.incoming <- &Conn{conn: *listener.listener}
+	listener.connections.Store(addr, conn)
+
+	listener.incoming <- conn
 	return err
 }
