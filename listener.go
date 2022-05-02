@@ -14,7 +14,6 @@ type Listener struct {
 	listener *net.UDPConn
 
 	incoming chan *Conn
-	closed   chan net.UDPConn
 
 	connections sync.Map
 
@@ -32,7 +31,6 @@ func Listen(address net.UDPAddr) (*Listener, error) {
 		listener: list,
 
 		incoming: make(chan *Conn),
-		closed:   make(chan net.UDPConn),
 
 		listenerId: listenerID,
 	}

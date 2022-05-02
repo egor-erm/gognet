@@ -27,6 +27,7 @@ func (connection *Conn) Read() (b []byte, err error) {
 	case packet := <-connection.packets:
 		return packet, nil
 	case <-connection.closed:
+		close(connection.packets)
 		return nil, fmt.Errorf("connection closed %x", connection.Addr)
 	}
 }
