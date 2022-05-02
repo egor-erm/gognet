@@ -79,25 +79,17 @@ func (listener *Listener) Close() error {
 func (listener *Listener) handle(b *bytes.Buffer, addr net.UDPAddr) error {
 	conn, found := listener.connections[addr.String()]
 
-	packetID, err := b.ReadByte()
-	if err != nil {
-		return fmt.Errorf("error reading packet ID byte: %v", err)
-	}
 	if !found {
+		packetID, err := b.ReadByte()
+		if err != nil {
+			return fmt.Errorf("error reading packet ID byte: %v", err)
+		}
 		switch packetID {
 		case network.IDOpenConnectionRequest1:
 			return listener.handleOpenConnectionRequest1(b, addr)
 		default:
 			return fmt.Errorf("unknown packet received (%x): %x", packetID, b.Bytes())
 		}
-	}
-
-	switch packetID {
-	case network.IDOpenConnectionRequest1:
-		delete(listener.connections, addr.String())
-		delete(listener.actions, addr.String())
-		conn.closed <- true
-		return listener.handleOpenConnectionRequest1(b, addr)
 	}
 
 	select {
@@ -123,7 +115,7 @@ func (listener *Listener) handleOpenConnectionRequest1(b *bytes.Buffer, addr net
 
 	if packet.Protocol != network.Protocol_Version {
 		(&network.IncompatibleProtocolVersion{ServerGUID: listener.listenerId, ServerProtocol: network.Protocol_Version}).Write(b)
-		_, _ = listener.listener.Write(b.Bytes())
+		_, _ = listener.listener.WriteToUDP(b.Bytes(), &addr)
 		return fmt.Errorf("error handling open connection request 1: incompatible protocol version %v (listener protocol = %v)", packet.Protocol, network.Protocol_Version)
 	}
 
