@@ -4,19 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"net"
-	"strconv"
-	"strings"
 
 	"github.com/egor-erm/gognet/network"
 )
 
-func Dial(address string) (*net.UDPConn, error) {
-	ip := strings.Split(address, ":")[0]
-	port := strings.Split(address, ":")[1]
-	p, _ := strconv.Atoi(port)
-
+func Dial(address *net.UDPAddr) (*net.UDPConn, error) {
 	la := &net.UDPAddr{IP: []byte{0, 0, 0, 0}, Port: 54169}
-	ra := &net.UDPAddr{IP: net.IP(ip), Port: p}
+	ra := address
 
 	udpConn, err := net.DialUDP("udp", la, ra)
 
@@ -24,13 +18,20 @@ func Dial(address string) (*net.UDPConn, error) {
 		panic(err)
 	}
 
-	packet := &network.OpenConnectionRequest1{Protocol: network.Protocol_Version}
 	buf := bytes.NewBuffer(make([]byte, 0))
+
+	packet := &network.OpenConnectionRequest1{Protocol: network.Protocol_Version}
 	packet.Write(buf)
-	udpConn.Write(buf.Bytes())
+
+	_, err1 := udpConn.Write(buf.Bytes())
+
+	if err1 != nil {
+		panic(err1)
+	}
+	buf.Reset()
 
 	b := make([]byte, 1500)
-	n, _, err1 := udpConn.ReadFromUDP(b)
+	n, err1 := udpConn.Read(b)
 
 	if err1 != nil {
 		panic(err1)
@@ -42,11 +43,10 @@ func Dial(address string) (*net.UDPConn, error) {
 
 	switch byt {
 	case network.IDOpenConnectionReply1:
-		fmt.Println("Успех")
 		return udpConn, nil
 	case network.IDIncompatibleProtocolVersion:
-		fmt.Println("Протокол не тянет")
+		return nil, fmt.Errorf("protocol not supported")
 	}
 
-	return nil, nil
+	return nil, fmt.Errorf("error open connection")
 }

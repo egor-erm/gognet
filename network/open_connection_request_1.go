@@ -2,6 +2,7 @@ package network
 
 import (
 	"bytes"
+	"encoding/binary"
 )
 
 type OpenConnectionRequest1 struct {
@@ -9,11 +10,12 @@ type OpenConnectionRequest1 struct {
 }
 
 func (pk *OpenConnectionRequest1) Write(buf *bytes.Buffer) {
-	buf.Write([]byte{Protocol_Version})
+	_ = binary.Write(buf, binary.BigEndian, IDOpenConnectionRequest1)
+	_ = binary.Write(buf, binary.BigEndian, pk.Protocol)
 }
 
 func (pk *OpenConnectionRequest1) Read(buf *bytes.Buffer) error {
-	pk.Protocol, _ = buf.ReadByte()
-	_, err := buf.ReadByte()
+	var err error
+	pk.Protocol, err = buf.ReadByte()
 	return err
 }
