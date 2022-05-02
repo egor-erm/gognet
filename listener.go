@@ -91,6 +91,7 @@ func (listener *Listener) handle(b *bytes.Buffer, addr net.UDPAddr) error {
 	select {
 	case <-conn.closed:
 		listener.connections.Delete(addr.String())
+		close(conn.packets)
 	default:
 		conn.packets <- b.Bytes()
 	}
