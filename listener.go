@@ -7,8 +7,6 @@ import (
 	"math/rand"
 	"net"
 	"os"
-	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/egor-erm/gognet/network"
@@ -17,8 +15,8 @@ import (
 type Listener struct {
 	listener *net.UDPConn
 
-	incoming chan *net.UDPConn
-	closed   chan *net.UDPConn
+	incoming chan *Conn
+	closed   chan net.UDPConn
 
 	connections sync.Map
 
@@ -29,21 +27,15 @@ type Listener struct {
 var listenerID = rand.Int31()
 
 func Listen(address string) (*Listener, error) {
-	ip := strings.Split(address, ":")[0]
-	port := strings.Split(address, ":")[1]
-	p, _ := strconv.Atoi(port)
-
-	la := &net.UDPAddr{IP: net.IP(ip), Port: p}
-
-	list, err := net.ListenUDP("udp", la)
+	list, err := net.ListenUDP("udp", Convert(address))
 	if err != nil {
 		return nil, &net.OpError{Op: "listen", Net: "gognet", Source: nil, Addr: nil, Err: err}
 	}
 	listener := &Listener{
 		listener: list,
 
-		incoming: make(chan *net.UDPConn),
-		closed:   make(chan *net.UDPConn),
+		incoming: make(chan *Conn),
+		closed:   make(chan net.UDPConn),
 
 		log:        log.New(os.Stderr, "", log.LstdFlags),
 		listenerId: listenerID,
@@ -75,7 +67,12 @@ func (listener *Listener) Accept() (*net.UDPConn, error) {
 	if !ok {
 		return nil, &net.OpError{Op: "accept", Net: "raknet", Source: nil, Addr: nil, Err: fmt.Errorf("Conn closed")}
 	}
-	return conn, nil
+	return &conn.conn, nil
+}
+
+func (listener *Listener) Close() error {
+	err := listener.listener.Close()
+	return err
 }
 
 func (listener *Listener) handle(b *bytes.Buffer, addr net.Addr) error {
@@ -114,6 +111,6 @@ func (listener *Listener) handleOpenConnectionRequest1(b *bytes.Buffer, addr net
 
 	listener.connections.Store(addr, listener.listener)
 
-	listener.incoming <- listener.listener
+	listener.incoming <- &Conn{conn: *listener.listener}
 	return err
 }
