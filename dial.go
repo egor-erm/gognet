@@ -27,7 +27,7 @@ func Dial(address *net.UDPAddr) (*net.UDPConn, error) {
 
 	buf := bytes.NewBuffer(make([]byte, 0))
 
-	packet := &network.OpenConnectionRequest1{Protocol: network.Protocol_Version}
+	packet := &network.OpenConnectionRequest1{Protocol: Protocol_Version}
 	packet.Write(buf)
 
 	_, err1 := udpConn.Write(buf.Bytes())

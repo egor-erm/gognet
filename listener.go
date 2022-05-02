@@ -23,8 +23,6 @@ type Listener struct {
 
 var listenerID = rand.Int31()
 
-var connection_time int64 = 300
-
 func Listen(address net.UDPAddr) (*Listener, error) {
 	list, err := net.ListenUDP("udp", &address)
 	if err != nil {
@@ -113,10 +111,10 @@ func (listener *Listener) handleOpenConnectionRequest1(b *bytes.Buffer, addr net
 
 	b.Reset()
 
-	if packet.Protocol != network.Protocol_Version {
-		(&network.IncompatibleProtocolVersion{ServerGUID: listener.listenerId, ServerProtocol: network.Protocol_Version}).Write(b)
+	if packet.Protocol != Protocol_Version {
+		(&network.IncompatibleProtocolVersion{ServerGUID: listener.listenerId, ServerProtocol: Protocol_Version}).Write(b)
 		_, _ = listener.listener.WriteToUDP(b.Bytes(), &addr)
-		return fmt.Errorf("error handling open connection request 1: incompatible protocol version %v (listener protocol = %v)", packet.Protocol, network.Protocol_Version)
+		return fmt.Errorf("error handling open connection request 1: incompatible protocol version %v (listener protocol = %v)", packet.Protocol, Protocol_Version)
 	}
 
 	pack := &network.OpenConnectionReply1{ServerGUID: listener.listenerId}
@@ -141,7 +139,7 @@ func (listener *Listener) tick() {
 	for {
 		time.Sleep(time.Second * 5)
 		for key, value := range listener.actions {
-			if time.Now().Unix() > value+connection_time {
+			if time.Now().Unix() > value+timeout_time {
 				listener.connections[key].closed <- true
 				delete(listener.connections, key)
 				delete(listener.actions, key)
@@ -151,5 +149,5 @@ func (listener *Listener) tick() {
 }
 
 func (listener *Listener) SetDeadLineTimeOut(sec int64) {
-	connection_time = sec
+	timeout_time = sec
 }
