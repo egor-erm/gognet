@@ -154,7 +154,10 @@ func (listener *Listener) tick() {
 				delete(listener.connections, key)
 				delete(listener.actions, key)
 			}
-			fmt.Println(key)
 		}
 	}
+}
+
+func (listener *Listener) SetDeadLineTimeOut(sec int64) {
+	connection_time = sec
 }
