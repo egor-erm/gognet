@@ -3,7 +3,7 @@
 Gognet is a library for creating simple game servers based on the udp protocol. At its core, it represents a simplified version of the raknet gaming protocol, but without unnecessary functions. This allows you to create simpler clients in different programming languages to work with gognet. To begin with, the client establishes a connection with the server, then can safely exchange data with it.
 
 # Getting Started
-##To create a server:
+To create a server:
 ```go
 package main
 
@@ -14,7 +14,10 @@ import (
 )
 
 func main() {
-	listener, _ := gognet.Listen(net.UDPAddr{IP: []byte{0, 0, 0, 0}, Port: 15000}) // ip and port of listener
+	listener, _ := gognet.Listen(net.UDPAddr{
+		IP:   []byte{0, 0, 0, 0},
+		Port: 15000}) // ip and port of listener
+		
 	defer listener.Close()
 
 	for {
@@ -32,7 +35,8 @@ func main() {
 }
 ```
 
-##To create a client:
+To create a client:
+
 ```go
 package main
 
