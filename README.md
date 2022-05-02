@@ -24,7 +24,7 @@ func main() {
 		conn, _ := listener.Accept() //new connection
     
 		go func() { //create gorutine for connection
-      defer conn.Close()
+      			defer conn.Close()
 			for {
 				b, _ := conn.Read() // read []byte packet
 
