@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
-	"sync"
+	"time"
 
 	"github.com/egor-erm/gognet/network"
 )
@@ -15,12 +15,15 @@ type Listener struct {
 
 	incoming chan *Conn
 
-	connections sync.Map
+	connections map[string]*Conn
 
+	actions    map[string]int64
 	listenerId int32
 }
 
 var listenerID = rand.Int31()
+
+var connection_time int64 = 300
 
 func Listen(address net.UDPAddr) (*Listener, error) {
 	list, err := net.ListenUDP("udp", &address)
@@ -32,10 +35,14 @@ func Listen(address net.UDPAddr) (*Listener, error) {
 
 		incoming: make(chan *Conn),
 
+		connections: make(map[string]*Conn),
+		actions:     make(map[string]int64),
+
 		listenerId: listenerID,
 	}
 
 	go listener.listen()
+	go listener.tick()
 	return listener, nil
 }
 
@@ -70,12 +77,13 @@ func (listener *Listener) Close() error {
 }
 
 func (listener *Listener) handle(b *bytes.Buffer, addr net.UDPAddr) error {
-	value, found := listener.connections.Load(addr.String())
+	conn, found := listener.connections[addr.String()]
+
+	packetID, err := b.ReadByte()
+	if err != nil {
+		return fmt.Errorf("error reading packet ID byte: %v", err)
+	}
 	if !found {
-		packetID, err := b.ReadByte()
-		if err != nil {
-			return fmt.Errorf("error reading packet ID byte: %v", err)
-		}
 		switch packetID {
 		case network.IDOpenConnectionRequest1:
 			return listener.handleOpenConnectionRequest1(b, addr)
@@ -84,13 +92,21 @@ func (listener *Listener) handle(b *bytes.Buffer, addr net.UDPAddr) error {
 		}
 	}
 
-	conn := value.(*Conn)
+	switch packetID {
+	case network.IDOpenConnectionRequest1:
+		delete(listener.connections, addr.String())
+		delete(listener.actions, addr.String())
+		conn.closed <- true
+		return listener.handleOpenConnectionRequest1(b, addr)
+	}
 
 	select {
 	case <-conn.closed:
-		listener.connections.Delete(addr.String())
-		close(conn.packets)
+		delete(listener.connections, addr.String())
+		delete(listener.actions, addr.String())
+		conn.Close()
 	default:
+		listener.actions[addr.String()] = time.Now().Unix()
 		conn.packets <- b.Bytes()
 	}
 
@@ -111,13 +127,34 @@ func (listener *Listener) handleOpenConnectionRequest1(b *bytes.Buffer, addr net
 		return fmt.Errorf("error handling open connection request 1: incompatible protocol version %v (listener protocol = %v)", packet.Protocol, network.Protocol_Version)
 	}
 
-	(&network.OpenConnectionReply1{ServerGUID: listener.listenerId}).Write(b)
+	pack := &network.OpenConnectionReply1{ServerGUID: listener.listenerId}
+	pack.Write(b)
+
 	_, err := listener.listener.WriteToUDP(b.Bytes(), &addr)
 
-	conn := &Conn{Connection: listener.listener, Addr: addr, packets: make(chan []byte)}
+	if err == nil {
+		conn := &Conn{Connection: listener.listener, Addr: addr, packets: make(chan []byte), closed: make(chan bool)}
 
-	listener.connections.Store(addr.String(), conn)
+		listener.connections[addr.String()] = conn
 
-	listener.incoming <- conn
+		listener.actions[addr.String()] = time.Now().Unix()
+
+		listener.incoming <- conn
+	}
+
 	return err
+}
+
+func (listener *Listener) tick() {
+	for {
+		time.Sleep(time.Second * 5)
+		for key, value := range listener.actions {
+			if time.Now().Unix() > value+connection_time {
+				listener.connections[key].closed <- true
+				delete(listener.connections, key)
+				delete(listener.actions, key)
+			}
+			fmt.Println(key)
+		}
+	}
 }
