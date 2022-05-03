@@ -23,7 +23,7 @@ func main() {
 	for {
 		conn, _ := listener.Accept() //new connection
     
-		go func() { //create gorutine for connection
+		go func() { //create goroutine for connection
       			defer conn.Close()
 			for {
 				b, _ := conn.Read() // read []byte packet
