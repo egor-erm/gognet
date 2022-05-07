@@ -23,7 +23,7 @@ func main() {
 	for {
 		conn, _ := listener.Accept() //new connection
     
-		go func() { //create gorutine for connection
+		go func() { //create goroutine for connection
       			defer conn.Close()
 			for {
 				b, _ := conn.Read() // read []byte packet
@@ -57,7 +57,7 @@ func main() {
 	for {
 		_, _ = conn.Write([]byte{1, 2, 3, 4, 5}) // write []byte packet
 
-		b := make([]byte, 1024*1024*3)
+		b := make([]byte, 1024*1024*4)
 		n, _ := conn.Read(b) // read []byte packet
 
 		buf := bytes.NewBuffer(b[:n])
