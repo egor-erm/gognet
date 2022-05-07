@@ -4,9 +4,11 @@ import (
 	"net"
 )
 
-const Protocol_Version byte = 0x01
+const (
+	Protocol_Version byte = 0x01
+)
 
-var timeout_time int64 = 300
+var timeout_time int64 = 900
 
 func ConvertDomain(domain string) net.IP {
 	ips, _ := net.LookupIP(domain)
