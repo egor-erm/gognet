@@ -77,8 +77,8 @@ func (listener *Listener) Close() error {
 func (listener *Listener) handle(b *bytes.Buffer, addr net.UDPAddr) error {
 	conn, found := listener.connections[addr.String()]
 
+	packetID, err := b.ReadByte()
 	if !found {
-		packetID, err := b.ReadByte()
 		if err != nil {
 			return fmt.Errorf("error reading packet ID byte: %v", err)
 		}
@@ -86,19 +86,20 @@ func (listener *Listener) handle(b *bytes.Buffer, addr net.UDPAddr) error {
 		case network.IDOpenConnectionRequest1:
 			return listener.handleOpenConnectionRequest1(b, addr)
 		default:
-			return fmt.Errorf("unknown packet received (%x): %x", packetID, b.Bytes())
+			(&network.Unconnected{}).Write(b)
+			_, _ = listener.listener.WriteToUDP(b.Bytes(), &addr)
+			return fmt.Errorf("unknown unconnected packet received (%x): %x", packetID, b.Bytes())
 		}
 	}
 
-	select {
-	case <-conn.closed:
-		delete(listener.connections, addr.String())
-		delete(listener.actions, addr.String())
-		conn.Close()
-	default:
-		listener.actions[addr.String()] = time.Now().Unix()
-		conn.packets <- b.Bytes()
+	switch packetID {
+	case network.IDUnconnected:
+		listener.connections[addr.String()].Close(listener)
+		return fmt.Errorf("unconnected packet received (%x): %x", packetID, b.Bytes())
 	}
+
+	listener.actions[addr.String()] = time.Now().Unix()
+	conn.packets <- b.Bytes()
 
 	return nil
 }
@@ -140,9 +141,7 @@ func (listener *Listener) tick() {
 		time.Sleep(time.Second * 5)
 		for key, value := range listener.actions {
 			if time.Now().Unix() > value+timeout_time {
-				listener.connections[key].closed <- true
-				delete(listener.connections, key)
-				delete(listener.actions, key)
+				listener.connections[key].Close(listener)
 			}
 		}
 	}
