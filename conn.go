@@ -24,6 +24,12 @@ func (connection *Conn) Close(listener *Listener) {
 	connection.closed <- true
 }
 
+func (connection *Conn) CloseFromClient(listener *Listener) {
+	delete(listener.connections, connection.Addr.String())
+	delete(listener.actions, connection.Addr.String())
+	connection.closed <- true
+}
+
 func (connection *Conn) SendUnconnect() {
 	b := bytes.NewBuffer(make([]byte, 0))
 	(&network.Unconnected{}).Write(b)

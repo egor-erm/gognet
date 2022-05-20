@@ -94,7 +94,7 @@ func (listener *Listener) handle(b *bytes.Buffer, addr net.UDPAddr) error {
 
 	switch packetID {
 	case network.IDUnconnected:
-		listener.connections[addr.String()].Close(listener)
+		listener.connections[addr.String()].CloseFromClient(listener)
 		return fmt.Errorf("unconnected packet received (%x): %x", packetID, b.Bytes())
 	}
 
