@@ -20,6 +20,7 @@ type Conn struct {
 func (connection *Conn) Close(listener *Listener) {
 	delete(listener.connections, connection.Addr.String())
 	delete(listener.actions, connection.Addr.String())
+	connection.SendUnconnect()
 	connection.closed <- true
 }
 
@@ -36,7 +37,6 @@ func (connection *Conn) Write(bytes []byte) (n int, err error) {
 func (connection *Conn) Read() (b []byte, err error) {
 	select {
 	case <-connection.closed:
-		connection.SendUnconnect()
 		return nil, fmt.Errorf("connection closed %x", connection.Addr)
 	case packet := <-connection.packets:
 		return packet, nil
