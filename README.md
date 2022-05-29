@@ -51,7 +51,7 @@ import (
 var remoteAdr = net.UDPAddr{IP: []byte{0, 0, 0, 0}, Port: 15000}
 
 func main() {
-	conn, _ := gognet.Dial(&remoteAdr) //crate client
+	conn, _ := gognet.Dial(&remoteAdr) //create client
 	defer conn.Close()
 
 	for {
