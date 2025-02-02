@@ -66,5 +66,3 @@ func main() {
 	}
 }
 ```
-
-## Telegram - https://t.me/ermolaymc
